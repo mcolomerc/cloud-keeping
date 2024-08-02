@@ -43,7 +43,9 @@ export CLUSTER_API_KEY=<CLUSTER_API_KEY>
 export CLUSTER_API_SECRET=<CLUSTER_API_SECRET>
 export CLOUD_API_KEY=<CLOUD_API_KEY>
 export CLOUD_API_SECRET=<CLOUD_API_SECRET>
+```
 
+```shell
 cleanup confluent topics
 ```
 

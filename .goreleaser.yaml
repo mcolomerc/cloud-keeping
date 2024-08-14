@@ -17,13 +17,19 @@ builds:
 
   - id: darwin-amd64
     binary: cleanup-darwin-{{ .Arch }}
+    env:
+    - CGO_ENABLED=1
+    - CC=/home/runner/work/osxcross/target/bin/o64-clang
+    - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+    ldflags:
+      - -s
     main: ./main.go
     goos:
       - darwin
     goarch:
       - amd64 
-    no_unique_dist_dir: true
-
+    no_unique_dist_dir: true 
+    
   - id: windows-amd64
     binary: cleanup-windows-{{ .Arch }}
     main: ./main.go

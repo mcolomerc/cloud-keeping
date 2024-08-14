@@ -6,10 +6,10 @@ on:
       - "*" # triggers only if push new tag version, like `0.8.4` or else
 
 jobs:
-  build:
-    name: GoReleaser build
-    runs-on: ubuntu-latest
-
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest 
     steps:
       - uses: actions/checkout@v4
         with:

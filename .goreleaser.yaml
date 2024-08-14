@@ -3,6 +3,7 @@ project_name: cleanup
 env:
   - GO111MODULE=on
   - CGO_ENABLED=0
+  - LDFLAGS=-lpthread
 
 builds:
   - id: linux-amd64

@@ -42,8 +42,6 @@ var topicsCmd = &cobra.Command{
 		}
 		cflt := confluent.NewConfluentClean(environment, cluster, cluster_api_key, cluster_api_secret, cloud_api_key, cloud_api_secret)
 
-		fmt.Println(confirm) // Print the value of the confirm variable
-
 		cflt.HandleInactiveTopics(confirm)
 	},
 }

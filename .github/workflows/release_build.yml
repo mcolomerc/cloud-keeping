@@ -24,6 +24,7 @@ jobs:
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
           sudo apt-get install gcc-multilib -y
           sudo apt-get install gcc-mingw-w64 -y
+          sudo apt-get -y install gcc-aarch64-linux-gnu
       - uses: goreleaser/goreleaser-action@v6
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro'

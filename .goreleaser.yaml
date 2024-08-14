@@ -1,0 +1,40 @@
+project_name: cleanup
+
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=0
+
+builds:
+  - id: linux-amd64
+    binary: cleanup-linux-{{ .Arch }}
+    main: ./main.go
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+    no_unique_dist_dir: true
+
+  - id: darwin-amd64
+    binary: cleanup-darwin-{{ .Arch }}
+    main: ./main.go
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
+    no_unique_dist_dir: true
+
+  - id: windows-amd64
+    binary: cleanup-windows-{{ .Arch }}
+    main: ./main.go
+    goos:
+      - windows
+    goarch:
+      - amd64
+    ldflags:
+      - -buildmode=exe
+      - "{{ .Env.LDFLAGS }}"
+    no_unique_dist_dir: true

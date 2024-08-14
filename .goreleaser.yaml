@@ -2,7 +2,7 @@ project_name: cleanup
 
 env:
   - GO111MODULE=on
-  - CGO_ENABLED=0
+  - CGO_ENABLED=1
   - LDFLAGS=-lpthread
 
 builds:

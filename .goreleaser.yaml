@@ -8,6 +8,8 @@ env:
 builds:
   - id: linux-amd64
     binary: cleanup-linux-{{ .Arch }}
+    env:
+    - CGO_ENABLED=1
     main: ./main.go
     goos:
       - linux

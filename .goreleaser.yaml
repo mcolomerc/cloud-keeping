@@ -6,32 +6,26 @@ env:
   - LDFLAGS=-lpthread
 
 builds:
-  - id: linux-amd64
-    binary: cleanup-linux-{{ .Arch }}
+  - id: linux-build
     env:
     - CGO_ENABLED=1
-    main: ./main.go
     goos:
-      - linux
-    goarch:
-      - amd64 
-    no_unique_dist_dir: true
-
-  - id: darwin-amd64
-    binary: cleanup-darwin-{{ .Arch }}
+    - linux
+    ignore:
+    - goos: linux
+      goarch: 386
+  - id: darwin-build
+    ldflags:
+    - -s
     env:
     - CGO_ENABLED=1
     - CC=/home/runner/work/osxcross/target/bin/o64-clang
     - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    ldflags:
-      - -s
-    main: ./main.go
     goos:
-      - darwin
-    goarch:
-      - amd64 
-    no_unique_dist_dir: true 
-    
+    - darwin
+    ignore:
+    - goos: darwin
+      goarch: 386
   - id: windows-amd64
     binary: cleanup-windows-{{ .Arch }}
     env: 

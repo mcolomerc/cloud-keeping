@@ -5,23 +5,6 @@ env:
   - CGO_ENABLED=1 
 
 builds:
-  - id: darwin-amd64
-    main: ./
-    binary: cleanup
-    goos:
-      - darwin
-    goarch:
-      - amd64 
-    env:
-      - CGO_ENABLED=1 
-      - PKG_CONFIG_SYSROOT_DIR=/sysroot/macos/amd64
-      - PKG_CONFIG_PATH=/sysroot/macos/amd64/usr/local/lib/pkgconfig
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    flags:
-      - -mod=readonly
-    ldflags:
-      - -s -w -X main.version={{.Version}}
   - id: linux-amd64
     main: ./
     binary: cleanup
@@ -42,7 +25,6 @@ builds:
 archives:
   - id: cleanup
     builds:
-      - darwin-amd64 
       - linux-amd64
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format: zip

@@ -2,41 +2,64 @@ project_name: cleanup
 
 env:
   - GO111MODULE=on
-  - CGO_ENABLED=1
-  - LDFLAGS=-lpthread
+  - CGO_ENABLED=1 
 
 builds:
-  - id: linux-build
-    env:
-    - CGO_ENABLED=1
-    - CC=aarch64-linux-gnu-gcc
+  - id: darwin-amd64
+    main: ./
+    binary: cleanup
     goos:
-    - linux
-    ignore:
-    - goos: linux
-      goarch: 386
-  - id: darwin-build
-    ldflags:
-    - -s
-    env:
-    - CGO_ENABLED=1
-    - CC=/home/runner/work/osxcross/target/bin/o64-clang
-    - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
-    goos:
-    - darwin
-    ignore:
-    - goos: darwin
-      goarch: 386
-  - id: windows-amd64
-    binary: cleanup-windows-{{ .Arch }}
-    env: 
-    - CC=x86_64-w64-mingw32-gcc
-    - CGO_ENABLED=1 
-    main: ./main.go
-    goos:
-      - windows
+      - darwin
     goarch:
-      - amd64
+      - amd64 
+    env:
+      - CGO_ENABLED=1 
+      - PKG_CONFIG_SYSROOT_DIR=/sysroot/macos/amd64
+      - PKG_CONFIG_PATH=/sysroot/macos/amd64/usr/local/lib/pkgconfig
+      - CC=o64-clang
+      - CXX=o64-clang++
+    flags:
+      - -mod=readonly
     ldflags:
-      - -buildmode=exe 
-    no_unique_dist_dir: true
+      - -s -w -X main.version={{.Version}}
+  - id: linux-amd64
+    main: ./
+    binary: cleanup
+    goos:
+      - linux
+    goarch:
+      - amd64 
+    env:
+      - CGO_ENABLED=1 
+      - PKG_CONFIG_SYSROOT_DIR=/sysroot/macos/amd64
+      - PKG_CONFIG_PATH=/sysroot/macos/amd64/usr/local/lib/pkgconfig
+      - CC=x86_64-linux-gnu-gcc
+      - CXX=x86_64-linux-gnu-g++
+    flags:
+      - -mod=readonly
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+archives:
+  - id: cleanup
+    builds:
+      - darwin-amd64 
+      - linux-amd64
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: zip
+    wrap_in_directory: true
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+release:
+  github:
+    owner: mcolomerc
+    name: cleanup
+  prerelease: auto

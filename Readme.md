@@ -48,10 +48,10 @@ cleanup confluent topics
 ```
 
 Internal topics are not considered for deletion.
-Ouput will be a list of topics and a prompt to delete all inactive topics:
+Ouput will be a list of topics by status, and then a prompt to delete all inactive topics:
 
 ```shell
-───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────╮
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────╮
 │ TOPIC                                                                                                             │ ACTIVE (LAST 7 DAYS) │
 ├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────────────────┤
 │ _confluent-ksql-pksqlc-kn8m66query_CSAS_STOCKS_ENRICHED_21-Join-repartition                                       │ YES                  │
@@ -77,5 +77,11 @@ Delete all inactive topics?: y
 ├──────────────────┼─────────┤
 │ TOTAL            │ 1       │
 ╰──────────────────┴─────────╯
+```
+
+Skiping confirmation prompt with `--yes` flag:
+
+```shell
+cleanup confluent topics --yes
 ```
 

@@ -65,3 +65,29 @@ func (c *ConfluentCloudClient) DeleteTopics(topics []string) {
 func (c *ConfluentCloudClient) GetInactiveTopics(activeTopics []string, topics []string) []string {
 	return c.KafkaCluster.InactiveTopicsTable(activeTopics, topics)
 }
+
+func (c *ConfluentCloudClient) GetConnectors() ([]ConfluentCloudConnector, error) {
+	c.HTTPS.Endpoint = fmt.Sprintf("https://api.confluent.cloud/connect/v1/environments/%s/clusters/%s/connectors?expand=info,status,id", c.Environment, c.ClusterID)
+	response, err := c.HTTPS.Get()
+	if err != nil {
+		fmt.Printf("\n Error getting connectors: %v", err)
+		return nil, err
+	}
+	responseData := response.(map[string]interface{})
+	connectors := make([]ConfluentCloudConnector, 0)
+	for _, connector := range responseData {
+		connectorData := connector.(map[string]interface{})
+		info := connectorData["info"].(map[string]interface{})
+		status := connectorData["status"].(map[string]interface{})
+		id := connectorData["id"].(map[string]interface{})
+		connector := status["connector"].(map[string]interface{})
+
+		connectors = append(connectors, ConfluentCloudConnector{
+			Name:  info["name"].(string),
+			Id:    id["id"].(string),
+			State: ConnectorState(connector["state"].(string)),
+			Type:  connector["type"].(string),
+		})
+	}
+	return connectors, nil
+}

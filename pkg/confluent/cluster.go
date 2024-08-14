@@ -32,10 +32,10 @@ const (
 
 func NewKafkaCluster(cluster, bootstrap, rest_endpoint, cluster_api_key, cluster_api_secret string) (*ConfluentCloudCluster, error) {
 
-	fmt.Println("Validating configuration")
-	fmt.Println("Cluster: ", cluster)
-	fmt.Println("Cluster API KEY: ", cluster_api_key)
-	fmt.Println("Cloud API SECRET: ", cluster_api_secret)
+	fmt.Println("\n Validating cluster configuration. ")
+	fmt.Println("  - Cluster: ", cluster)
+	fmt.Println("  - Bootstrap: ", bootstrap)
+	fmt.Println("  - Cluster API KEY: ", cluster_api_key)
 
 	// Create a new AdminClient.
 	config := &kafka.ConfigMap{
@@ -122,6 +122,7 @@ func (c *ConfluentCloudCluster) DeleteTopics(topics []string) {
 }
 
 func (c *ConfluentCloudCluster) TopicsTable(topics []string) {
+
 	y := make([][]interface{}, len(topics))
 	for i, topic := range topics {
 		row := make([]interface{}, 2)
@@ -133,6 +134,7 @@ func (c *ConfluentCloudCluster) TopicsTable(topics []string) {
 }
 
 func (c *ConfluentCloudCluster) InactiveTopicsTable(activeTopics []string, topics []string) []string {
+	fmt.Printf("\n Building Topic status, in the last 7 days... \n")
 	allTopics := make([][]interface{}, len(topics))
 	var inactiveTopics []string
 

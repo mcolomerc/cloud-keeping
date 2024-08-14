@@ -43,11 +43,9 @@ const (
 )
 
 func NewConfluentCloudMetricsClient(cluster, cluster_api_key, cluster_api_secret string) (*ConfluentCloudMetricsClient, error) {
-
 	metricsClient := &ConfluentCloudMetricsClient{}
 	metricsClient.HTTPS = *client.NewHTTPS(METRICS_ENDPOINT, cluster_api_key, cluster_api_secret)
 	metricsClient.Cluster = cluster
-	fmt.Println("Metrics Client Created: ", metricsClient.HTTPS.Endpoint)
 	return metricsClient, nil
 }
 

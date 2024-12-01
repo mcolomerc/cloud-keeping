@@ -59,6 +59,16 @@ func (c *HTTPS) Post(requestBody []byte) (interface{}, error) {
 	return c.build(req)
 }
 
+func (c *HTTPS) Delete() (interface{}, error) {
+	// Get request to the endpoint
+	req, err := http.NewRequest(http.MethodDelete, c.Endpoint, nil)
+	if err != nil {
+		log.Errorf("Error building POST: " + err.Error())
+		return nil, err
+	}
+	return c.build(req)
+}
+
 // Build request - Client Do
 func (c *HTTPS) build(req *http.Request) (interface{}, error) {
 	req.Header.Set("Authorization", "Basic "+c.Bearer)
@@ -68,7 +78,7 @@ func (c *HTTPS) build(req *http.Request) (interface{}, error) {
 		log.Errorf("Rest client: error making http request: " + err.Error())
 		return nil, err
 	}
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated && res.StatusCode != http.StatusNoContent {
 		errorString := fmt.Sprintf("Rest client:: %d - %s : %v \n", res.StatusCode, req.Method, req.URL)
 		return nil, errors.New(errorString)
 	}

@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mcolomer/cloud-keeping/pkg/client"
-	"mcolomer/cloud-keeping/pkg/table"
-	"slices"
+
 	"strings"
 	"time"
 
@@ -19,18 +18,10 @@ type ConfluentCloudCluster struct {
 	RestEndpoint      string
 	ClusterAPI        client.HTTPS
 	AdminClient       kafka.AdminClient
+	CrnPatern         string
 }
 
-const (
-	KAFKA_ENDPOINT  = "%s/kafka/v3/clusters/%s/topics"
-	INTERNAL_PREFIX = "__"
-	DATA            = "data"
-	TOPIC_NAME      = "topic_name"
-	SASL_SSL        = "SASL_SSL"
-	PLAIN           = "PLAIN"
-)
-
-func NewKafkaCluster(cluster, bootstrap, rest_endpoint, cluster_api_key, cluster_api_secret string) (*ConfluentCloudCluster, error) {
+func NewKafkaCluster(cluster, bootstrap, rest_endpoint, cluster_api_key, cluster_api_secret, crn_pattern string) (*ConfluentCloudCluster, error) {
 
 	fmt.Println("\n Validating cluster configuration. ")
 	fmt.Println("  - Cluster: ", cluster)
@@ -60,9 +51,11 @@ func NewKafkaCluster(cluster, bootstrap, rest_endpoint, cluster_api_key, cluster
 		RestEndpoint:      rest_endpoint,
 		ClusterAPI:        *client,
 		AdminClient:       *admin,
+		CrnPatern:         crn_pattern,
 	}, nil
 }
 
+// TOPICS
 func (c *ConfluentCloudCluster) GetTopics() ([]string, error) {
 	c.ClusterAPI.Endpoint = fmt.Sprintf(KAFKA_ENDPOINT, c.RestEndpoint, c.ClusterID)
 	response, err := c.ClusterAPI.Get()
@@ -82,17 +75,7 @@ func (c *ConfluentCloudCluster) GetTopics() ([]string, error) {
 	return topics, nil
 }
 
-func (c *ConfluentCloudCluster) DeleteInactiveTopics(activeTopics, topics []string) {
-	var inactiveTopics []string
-	for _, topic := range topics {
-		if !slices.Contains(activeTopics, topic) {
-			inactiveTopics = append(inactiveTopics, topic)
-		}
-	}
-	c.DeleteTopics(inactiveTopics)
-}
-
-func (c *ConfluentCloudCluster) DeleteTopics(topics []string) {
+func (c *ConfluentCloudCluster) DeleteTopics(topics []string) []string {
 	// Contexts are used to abort or limit the amount of time
 	// the Admin call blocks waiting for a result.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -116,39 +99,113 @@ func (c *ConfluentCloudCluster) DeleteTopics(topics []string) {
 	}
 	if len(deletedTopics) == 0 {
 		fmt.Println("No topics deleted")
-	} else {
-		c.TopicsTable(deletedTopics)
+		return nil
 	}
+	return deletedTopics
 }
 
-func (c *ConfluentCloudCluster) TopicsTable(topics []string) {
-
-	y := make([][]interface{}, len(topics))
-	for i, topic := range topics {
-		row := make([]interface{}, 2)
-		row[0] = topic
-		row[1] = "DELETED"
-		y[i] = row
+// ACLs
+func (c *ConfluentCloudCluster) GetACLs() ([]kafka.ACLBinding, error) {
+	c.ClusterAPI.Endpoint = fmt.Sprintf(ACL_ENDPOINT, c.RestEndpoint, c.ClusterID)
+	fmt.Println("\n Getting ACLs")
+	fmt.Println("  - Endpoint: ", c.ClusterAPI.Endpoint)
+	response, err := c.ClusterAPI.Get()
+	if err != nil {
+		fmt.Printf("\n Error getting ACLs: %v", err)
+		return nil, err
 	}
-	table.NewTable([]string{"Topic", ""}, y)
-}
 
-func (c *ConfluentCloudCluster) InactiveTopicsTable(activeTopics []string, topics []string) []string {
-	fmt.Printf("\n Building Topic status, in the last 7 days... \n")
-	allTopics := make([][]interface{}, len(topics))
-	var inactiveTopics []string
+	responseData := response.(map[string]interface{})
+	spec := responseData[DATA].([]interface{})
 
-	for i, topic := range topics {
-		row := make([]interface{}, 2)
-		row[0] = topic
-		if slices.Contains(activeTopics, topic) {
-			row[1] = "YES"
-		} else {
-			row[1] = "EMPTY"
-			inactiveTopics = append(inactiveTopics, topic)
+	var acls []kafka.ACLBinding
+	for _, row := range spec {
+		var resource_type kafka.ResourceType
+		var resource_pattern_type kafka.ResourcePatternType
+		var operation kafka.ACLOperation
+		var permission kafka.ACLPermissionType
+
+		if row.(map[string]interface{})["resource_type"] != nil {
+			rType := row.(map[string]interface{})["resource_type"].(string)
+			if rType == "CLUSTER" {
+				rType = "BROKER"
+			}
+			res_type, err := kafka.ResourceTypeFromString(rType)
+			if err != nil {
+				fmt.Printf("Invalid resource type: %s: %v\n", row.(map[string]interface{})["resource_type"].(string), err)
+				return nil, err
+			}
+			resource_type = res_type
 		}
-		allTopics[i] = row
+		if row.(map[string]interface{})["pattern_type"] != nil {
+			pattern_type, err := kafka.ResourcePatternTypeFromString(row.(map[string]interface{})["pattern_type"].(string))
+			if err != nil {
+				fmt.Printf("Invalid resource pattern type: %s: %v\n", row.(map[string]interface{})["pattern_type"].(string), err)
+				return nil, err
+			}
+			resource_pattern_type = pattern_type
+		}
+		if row.(map[string]interface{})["operation"] != nil {
+			oper, err := kafka.ACLOperationFromString(row.(map[string]interface{})["operation"].(string))
+			if err != nil {
+				fmt.Printf("Invalid operation: %s: %v\n", row.(map[string]interface{})["operation"].(string), err)
+				return nil, err
+			}
+			operation = oper
+		}
+		if row.(map[string]interface{})["permission"] != nil {
+			perm, err := kafka.ACLPermissionTypeFromString(row.(map[string]interface{})["permission"].(string))
+			if err != nil {
+				fmt.Printf("Invalid permission: %s: %v\n", row.(map[string]interface{})["permission"].(string), err)
+				return nil, err
+			}
+			permission = perm
+		}
+		var name string
+		if row.(map[string]interface{})["resource_name"] != nil {
+			name = row.(map[string]interface{})["resource_name"].(string)
+		}
+		var principal string
+		if row.(map[string]interface{})["principal"] != nil {
+			principal = row.(map[string]interface{})["principal"].(string)
+		}
+		var host string
+		if row.(map[string]interface{})["host"] != nil {
+			host = row.(map[string]interface{})["host"].(string)
+		}
+		if name == "" || principal == "" || host == "" {
+			fmt.Println("Invalid ACL entry")
+			continue
+		}
+		acl := kafka.ACLBinding{
+			Type:                resource_type,
+			Name:                name,
+			ResourcePatternType: resource_pattern_type,
+			Principal:           principal,
+			Host:                host,
+			Operation:           operation,
+			PermissionType:      permission,
+		}
+		acls = append(acls, acl)
 	}
-	table.NewTable([]string{"Topic", "Active (Last 7 Days)"}, allTopics)
-	return inactiveTopics
+	return acls, nil
+}
+
+func (c *ConfluentCloudCluster) DeleteACLs(acls []kafka.ACLBinding) ([]kafka.DescribeACLsResult, error) {
+	// Contexts are used to abort or limit the amount of time
+	// the Admin call blocks waiting for a result.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Delete ACLs on cluster
+	// Set Admin options to wait for the operation to finish (or at most 60s)
+	maxDur, err := time.ParseDuration("60s")
+	if err != nil {
+		fmt.Println("Error:: ParseDuration(60s):: ", err)
+	}
+	results, err := c.AdminClient.DeleteACLs(ctx, acls, kafka.SetAdminRequestTimeout(maxDur))
+	if err != nil {
+		fmt.Printf("Failed to delete ACLs: %v\n", err)
+	}
+	return results, nil
 }

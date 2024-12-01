@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mcolomer/cloud-keeping/pkg/client" // Import the package that defines the HTTPS type
+	"strings"
 	"time"
 )
 
@@ -34,12 +35,18 @@ type ConfluentCloudMetricsQuery struct {
 const (
 	// The Confluent Cloud Metrics API endpoint
 	METRICS_ENDPOINT = "https://api.telemetry.confluent.cloud/v2/metrics/cloud/query"
-	TOPIC            = "metric.topic"
-	FIELD            = "resource.kafka.id"
-	RECEIVED_RECORDS = "io.confluent.kafka.server/received_records"
-	OPEREATION_EQ    = "eq"
-	GRANULARITY_1_D  = "P1D"
-	LIMIT            = 1000
+	METRIC_TOPIC     = "metric.topic"
+	METRIC_PRINCIPAL = "metric.principal_id"
+
+	METRICS_RECEIVED_RECORDS   = "io.confluent.kafka.server/received_records"
+	METRICS_ACTIVE_CONNECTIONS = "io.confluent.kafka.server/request_count"
+
+	FIELD           = "resource.kafka.id"
+	OPEREATION_EQ   = "eq"
+	GRANULARITY_1_D = "P1D"
+	LIMIT           = 1000
+
+	SERVICE_ACCOUNT = "sa-"
 )
 
 func NewConfluentCloudMetricsClient(cluster, cluster_api_key, cluster_api_secret string) (*ConfluentCloudMetricsClient, error) {
@@ -49,12 +56,11 @@ func NewConfluentCloudMetricsClient(cluster, cluster_api_key, cluster_api_secret
 	return metricsClient, nil
 }
 
-func (c *ConfluentCloudMetricsClient) GetActiveTopics() ([]string, error) {
-	// Build query payload
+func (c *ConfluentCloudMetricsClient) QueryMetric(metric string, group string) (map[string]interface{}, error) {
 	query := &ConfluentCloudMetricsQuery{
 		Aggregations: []MetricDescriptor{
 			{
-				Metric: RECEIVED_RECORDS,
+				Metric: metric,
 			},
 		},
 		Filter: MetricFilter{
@@ -63,7 +69,7 @@ func (c *ConfluentCloudMetricsClient) GetActiveTopics() ([]string, error) {
 			Value: c.Cluster,
 		},
 		Granularity: GRANULARITY_1_D,
-		GroupBy:     []string{TOPIC},
+		GroupBy:     []string{group},
 		Intervals:   []string{getLastWeekRange()},
 		Limit:       LIMIT,
 	}
@@ -78,14 +84,42 @@ func (c *ConfluentCloudMetricsClient) GetActiveTopics() ([]string, error) {
 		fmt.Printf("\nError getting active topics: %v", err)
 		return nil, err
 	}
-	responseData := response.(map[string]interface{})
+	return response.(map[string]interface{}), nil
+}
+
+/** io.confluent.kafka.server/request_count
+ *  This metric is useful to identify the number of active clients connected to the cluster.
+ *  Returns CC users as well (u-xxxxx)
+ */
+func (c *ConfluentCloudMetricsClient) GetConnectionsByServiceAccount() (map[string]float64, error) {
+	// Extract the list of topics from the response
+	principals := make(map[string]float64, 0)
+	responseData, err := c.QueryMetric(METRICS_ACTIVE_CONNECTIONS, METRIC_PRINCIPAL)
+	if err != nil {
+		return principals, err
+	}
+	for _, row := range responseData["data"].([]interface{}) {
+		principal := row.(map[string]interface{})[METRIC_PRINCIPAL].(string)
+		value := row.(map[string]interface{})["value"].(float64)
+		if strings.Contains(principal, SERVICE_ACCOUNT) {
+			principals[principal] = principals[principal] + value
+		}
+	}
+	return principals, nil
+}
+
+func (c *ConfluentCloudMetricsClient) GetActiveTopics() ([]string, error) {
 	// Extract the list of topics from the response
 	topics := make([]string, 0)
+	// Build query payload
+	responseData, err := c.QueryMetric(METRICS_RECEIVED_RECORDS, METRIC_TOPIC)
+	if err != nil {
+		return topics, err
+	}
 	for _, row := range responseData["data"].([]interface{}) {
-		topic := row.(map[string]interface{})[TOPIC].(string)
+		topic := row.(map[string]interface{})[METRIC_TOPIC].(string)
 		topics = append(topics, topic)
 	}
-
 	return topics, nil
 
 }

@@ -6,6 +6,10 @@
 
 ## Confluent Cloud
 
+Remove unused resources in Confluent Cloud using the `cleanup confluent` command.
+
+Delete the entire cluster and creating a new one requires providing the cluster API Keys and Secrets, and recreate all the required resources. This tools tries to detect inactive resources in order to delete them and avoid deleting the entire cluster each time. This is a common scenario when using Confluent Cloud for development and testing purposes.
+
 ### Topics
 
 Deletes all inactive topics in a cluster in Confluent Cloud. It uses Confluent Cloud Metrics API to get the list of topics using `io.confluent.kafka.server/received_records` metric. If the topic has not received any messages in the last 7 days, it is considered inactive and will be deleted.
@@ -85,3 +89,20 @@ Skiping confirmation prompt with `--yes` flag:
 cleanup confluent topics --yes
 ```
 
+### ACLs
+
+Deletes all ACLs in a cluster in Confluent Cloud. It uses Confluent Cloud API to get the list of ACLs and delete them.
+
+- It checks if the ACL is used in a topic, using Literal and Prefix patterns, and if it is not used, it will be deleted.
+ 
+
+#### Usage
+
+```shell
+Usage:
+  cleanup confluent acls [flags]
+```
+
+## Releases 
+
+[Releases](https://github.com/mcolomerc/cloud-keeping/releases)
